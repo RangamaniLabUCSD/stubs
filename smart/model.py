@@ -2266,6 +2266,8 @@ class Model:
         self.set_dt(dt_cur)
 
     def load_vector(self, h5_file, tVec):
+        cur_level = d.get_log_level()
+        d.set_log_level(40)  # suppress warning about rank of h5 data
         with d.HDF5File(self.parent_mesh.mpi_comm, h5_file, "r") as cur_file:
             # Find index associated with the starting time
             if np.any(np.isclose(tVec, float(self.t))):
@@ -2297,4 +2299,5 @@ class Model:
                 cur_file.read(vec2, f"VisualisationVector/{idx2}", True)
                 vec_new = (vec1 + vec2) / 2
             cur_file.close()
+        d.set_log_level(cur_level)  # restore log level
         return vec_new
