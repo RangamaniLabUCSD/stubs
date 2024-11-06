@@ -1009,15 +1009,7 @@ class Model:
         for parameter in self.pc:
             if parameter.type == ParameterType.from_xdmf:
                 # load the time vec from xdmf file
-                def load_timesteps_from_xdmf(xdmffile):
-                    times = []
-                    tree = ET.parse(xdmffile)
-                    for elem in tree.iter():
-                        if elem.tag == "Time":
-                            times.append(float(elem.get("Value")))
-                    return times
-
-                tVec = load_timesteps_from_xdmf(parameter.xdmf_file)
+                tVec = self.load_timesteps_from_xdmf(parameter.xdmf_file)
                 parameter.tVec = np.array(tVec)
 
                 # define function space
@@ -2265,14 +2257,23 @@ class Model:
         dt_cur = float(self.dt) * dt_scale
         self.set_dt(dt_cur)
 
+    def load_timesteps_from_xdmf(self, xdmffile):
+        times = []
+        tree = ET.parse(xdmffile)
+        for elem in tree.iter():
+            if elem.tag == "Time":
+                times.append(float(elem.get("Value")))
+        return times
+
     def load_vector(self, h5_file, tVec):
         cur_level = d.get_log_level()
         d.set_log_level(40)  # suppress warning about rank of h5 data
         with d.HDF5File(self.parent_mesh.mpi_comm, h5_file, "r") as cur_file:
             # Find index associated with the starting time
-            if np.any(np.isclose(tVec, float(self.t))):
+            has_timestamp = np.flatnonzero(np.isclose(tVec, float(self.t)))
+            if len(has_timestamp) > 0:
                 vec_new = d.Vector()
-                idx1 = np.nonzero(np.isclose(tVec, float(self.t)))[0][0]
+                idx1 = has_timestamp[0]
                 cur_file.read(vec_new, f"VisualisationVector/{idx1}", True)
             elif self.t > tVec[-1]:  # then starting after final time in the xdmf file
                 logger.warning(
@@ -2293,8 +2294,8 @@ class Model:
             else:  # then in between two times in the xdmf file
                 vec1 = d.Vector()
                 vec2 = d.Vector()
-                idx1 = np.nonzero(tVec < float(self.t))[0][-1]
-                idx2 = np.nonzero(tVec > float(self.t))[0][0]
+                idx1 = np.flatnonzero(tVec < float(self.t))[-1]
+                idx2 = np.flatnonzero(tVec > float(self.t))[0]
                 cur_file.read(vec1, f"VisualisationVector/{idx1}", True)
                 cur_file.read(vec2, f"VisualisationVector/{idx2}", True)
                 vec_new = (vec1 + vec2) / 2
