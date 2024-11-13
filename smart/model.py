@@ -19,7 +19,6 @@ from tabulate import tabulate
 from scipy import integrate
 from sympy.utilities.lambdify import lambdify
 from pathlib import Path
-import re
 import xml.etree.ElementTree as ET
 
 try:
@@ -1011,6 +1010,9 @@ class Model:
                 # load the time vec from xdmf file
                 tVec = self.load_timesteps_from_xdmf(parameter.xdmf_file)
                 parameter.tVec = np.array(tVec)
+                assert np.all(
+                    np.diff(parameter.tVec) >= 0.0
+                ), f"t values are not strictly increasing in {str(parameter.xdmf_file)}"
 
                 # define function space
                 if parameter.compartment not in self.cc.keys:
@@ -2030,12 +2032,10 @@ class Model:
                 )
 
             # load the time vec from xdmf file
-            xdmf_file = open(xdmfCur, "r")
-            xdmf_string = xdmf_file.read()
-            found_pattern = re.findall(r"Time Value=\"?[^\s]+", xdmf_string)
-            tVec = []
-            for i in range(len(found_pattern)):
-                tVec.append(float(found_pattern[i][12:-1]))
+            tVec = self.load_timesteps_from_xdmf(xdmfCur)
+            assert np.all(
+                np.diff(np.array(tVec)) >= 0.0
+            ), f"t values are not strictly increasing in {str(xdmfCur)}"
             if self.load_init_time is None:
                 if len(tVec) == 0:
                     raise ValueError(f"Could not load time from {xdmfCur}")

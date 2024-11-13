@@ -689,8 +689,7 @@ class Parameter(ObjectInstance):
         """ "
         Data read in from an xdmf/h5 file pairing
         """
-        if isinstance(xdmf_file, str):
-            xdmf_file = Path(xdmf_file)
+        xdmf_file = Path(xdmf_file)
         assert xdmf_file.is_file(), f"{str(xdmf_file)} could not be found to load parameter"
 
         logger.debug(f"Loading initial condition for {name} from file")
